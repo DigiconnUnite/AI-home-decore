@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Room Segmentation</title>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/deeplab"></script>
+<style>
+  body { font-family: Arial; text-align: center; padding: 20px; background: #f0f0f0; }
+  canvas { border: 1px solid #ccc; margin-top: 10px; }
+  .color-picker { margin: 5px; }
+</style>
+</head>
+<body>
+<h2>Interactive Room Segmentation & Color Mask</h2>
+<input type="file" id="upload" accept="image/*"><br><br>
+
+<!-- Color pickers for different elements -->
+<div id="colors">
+  Wall: <input type="color" id="wallColor" value="#FF6496" class="color-picker">
+  Floor: <input type="color" id="floorColor" value="#64FF64" class="color-picker">
+  Ceiling: <input type="color" id="ceilingColor" value="#6464FF" class="color-picker">
+  Furniture: <input type="color" id="furnitureColor" value="#FFD700" class="color-picker">
+  Objects: <input type="color" id="objectColor" value="#FF4500" class="color-picker">
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+async function runSegmentation() {
+  const imgUpload = document.getElementById("upload");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+
+  // Load ADE20K DeepLab model
+  const model = await deeplab.load({ base: "ade20k" });
+  let segmentationData = null;
+
+  // When user uploads an image
+  imgUpload.onchange = async () => {
+    const file = imgUpload.files[0];
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+
+    img.onload = async () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      // Run segmentation
+      const result = await model.segment(img);
+      segmentationData = result; // save for updates
+
+      applyColors();
+    };
+  };
+
+  // Function to apply color mask
+  function applyColors() {
+    if (!segmentationData) return;
+    const { segmentationMap, legend } = segmentationData;
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    // Get color values from pickers
+    const wallColor = hexToRGBA(document.getElementById("wallColor").value, 150);
+    const floorColor = hexToRGBA(document.getElementById("floorColor").value, 150);
+    const ceilingColor = hexToRGBA(document.getElementById("ceilingColor").value, 150);
+    const furnitureColor = hexToRGBA(document.getElementById("furnitureColor").value, 150);
+    const objectColor = hexToRGBA(document.getElementById("objectColor").value, 150);
+
+    const wallId = legend["wall"];
+    const floorId = legend["floor"];
+    const ceilingId = legend["ceiling"];
+    const furnitureId = legend["chair"] || legend["sofa"] || legend["bed"]; // sample furniture
+    // all other objects
+    const objectIds = Object.values(legend).filter(id => 
+      id !== wallId && id !== floorId && id !== ceilingId && id !== furnitureId
+    );
+
+    for (let i = 0; i < segmentationMap.length; i++) {
+      const segClass = segmentationMap[i];
+      if (segClass === wallId) setPixelColor(data, i, wallColor);
+      else if (segClass === floorId) setPixelColor(data, i, floorColor);
+      else if (segClass === ceilingId) setPixelColor(data, i, ceilingColor);
+      else if (segClass === furnitureId) setPixelColor(data, i, furnitureColor);
+      else if (objectIds.includes(segClass)) setPixelColor(data, i, objectColor);
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  // Listen for color picker changes
+  document.querySelectorAll(".color-picker").forEach(picker => {
+    picker.addEventListener("input", applyColors);
+  });
+
+  // Helper: set RGBA color for a pixel
+  function setPixelColor(data, i, color) {
+    data[i*4] = color[0];
+    data[i*4+1] = color[1];
+    data[i*4+2] = color[2];
+    data[i*4+3] = color[3];
+  }
+
+  // Helper: convert hex to RGBA array
+  function hexToRGBA(hex, alpha=255) {
+    const bigint = parseInt(hex.slice(1),16);
+    const r = (bigint >>16) & 255;
+    const g = (bigint >>8) & 255;
+    const b = bigint & 255;
+    return [r,g,b,alpha];
+  }
+}
+
+runSegmentation();
+</script>
+</body>
+</html>
