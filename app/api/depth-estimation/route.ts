@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processWallSegmentation } from '@/lib/ai-models';
+import { estimateDepth } from '@/lib/ai-models';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,23 +12,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process wall segmentation using AI
-    const result = await processWallSegmentation(imageUrl);
+    // Estimate depth using AI
+    const result = await estimateDepth(imageUrl);
 
     return NextResponse.json({
       success: true,
-      segmentation: {
-        mask: result.mask,
-        confidence: result.confidence,
-        bounds: result.bounds,
-        wallSegments: result.wallSegments,
+      depth: {
+        depthMap: result.depthMap,
+        minDepth: result.minDepth,
+        maxDepth: result.maxDepth,
+        perspectiveCorrection: result.perspectiveCorrection,
         processingTime: Date.now(),
       }
     });
   } catch (error) {
-    console.error('Segmentation API error:', error);
+    console.error('Depth estimation API error:', error);
     return NextResponse.json(
-      { error: 'Failed to process wall segmentation' },
+      { error: 'Failed to estimate depth' },
       { status: 500 }
     );
   }

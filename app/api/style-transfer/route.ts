@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { applyStyleTransfer } from '@/lib/ai-models';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,20 +12,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Simulate AI style transfer processing
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Apply style transfer using AI
+    const result = await applyStyleTransfer(originalImageUrl, styleImageUrl, maskData);
 
-    // Mock style transfer result
-    const result = {
+    return NextResponse.json({
       success: true,
       result: {
-        imageUrl: originalImageUrl, // In production, this would be the styled result
-        processingTime: 3000,
-        quality: 'high',
+        imageUrl: result.imageUrl,
+        processingTime: result.processingTime,
+        quality: result.quality,
       }
-    };
-
-    return NextResponse.json(result);
+    });
   } catch (error) {
     console.error('Style transfer API error:', error);
     return NextResponse.json(

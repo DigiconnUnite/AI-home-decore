@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processWallSegmentation } from '@/lib/ai-models';
+import { detectObjects } from '@/lib/ai-models';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,23 +12,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process wall segmentation using AI
-    const result = await processWallSegmentation(imageUrl);
+    // Detect objects using AI
+    const result = await detectObjects(imageUrl);
 
     return NextResponse.json({
       success: true,
-      segmentation: {
-        mask: result.mask,
-        confidence: result.confidence,
-        bounds: result.bounds,
-        wallSegments: result.wallSegments,
+      objects: {
+        detectedObjects: result.objects,
         processingTime: Date.now(),
       }
     });
   } catch (error) {
-    console.error('Segmentation API error:', error);
+    console.error('Object detection API error:', error);
     return NextResponse.json(
-      { error: 'Failed to process wall segmentation' },
+      { error: 'Failed to detect objects' },
       { status: 500 }
     );
   }
